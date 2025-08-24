@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Release script for go-actor-lib
-# Usage: ./scripts/release.sh [major|minor|patch]
-
 set -e
 
 # Colors for output
