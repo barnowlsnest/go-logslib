@@ -33,21 +33,21 @@ const (
 	// DebugLevel logs are typically voluminous, and are usually disabled in
 	// production.
 	DebugLevel Level = iota - 1
-
+	
 	// InfoLevel is the default logging priority.
 	InfoLevel
-
+	
 	// WarnLevel logs are more important than Info, but don't need individual
 	// human review.
 	WarnLevel
-
+	
 	// ErrorLevel logs are high-priority. If an application is running smoothly,
 	// it shouldn't generate any error-level logs.
 	ErrorLevel
-
+	
 	// FatalLevel logs a message, then calls os.Exit(1).
 	FatalLevel
-
+	
 	// PanicLevel logs a message, then panics.
 	PanicLevel
 )
@@ -79,7 +79,7 @@ const (
 	// TextFormat outputs logs in a human-readable text format.
 	// Example: "2024-01-20T15:04:05.000Z INFO User logged in userID=12345"
 	TextFormat Format = iota
-
+	
 	// JSONFormat outputs logs in structured JSON format.
 	// Example: {"timestamp":"2024-01-20T15:04:05.000Z","level":"INFO","message":"User logged in","userID":12345}
 	JSONFormat
@@ -90,7 +90,7 @@ const (
 type Field struct {
 	// Key is the field name
 	Key string
-
+	
 	// Value is the field value, can be string, int, int64, float64, or bool
 	Value interface{}
 }
@@ -100,14 +100,14 @@ type Config struct {
 	// Level sets the minimum log level that will be output.
 	// Log entries below this level will be discarded.
 	Level Level
-
+	
 	// Format determines the output format (TextFormat or JSONFormat).
 	Format Format
-
+	
 	// Output specifies where log entries will be written.
 	// If nil, defaults to os.Stdout.
 	Output io.Writer
-
+	
 	// BufferSize enables buffering when > 0. Log entries are buffered
 	// until the buffer is full or Flush() is called. Useful for reducing
 	// I/O operations in cloud environments.
@@ -141,18 +141,18 @@ func New(config Config) *Logger {
 	if config.Output == nil {
 		config.Output = os.Stdout
 	}
-
+	
 	l := &Logger{
 		config: config,
 		buffer: make([]byte, 0, config.BufferSize),
 	}
-
+	
 	l.pool = sync.Pool{
 		New: func() interface{} {
 			return make([]byte, 0, 256)
 		},
 	}
-
+	
 	return l
 }
 
@@ -198,18 +198,18 @@ func (l *Logger) log(level Level, msg string, fields ...Field) {
 	if level < l.config.Level {
 		return
 	}
-
+	
 	buf := l.pool.Get().([]byte)
 	buf = buf[:0]
 	defer l.pool.Put(buf)
-
+	
 	switch l.config.Format {
 	case JSONFormat:
 		buf = l.appendJSON(buf, level, msg, fields...)
 	default:
 		buf = l.appendText(buf, level, msg, fields...)
 	}
-
+	
 	l.write(buf)
 }
 
@@ -255,15 +255,15 @@ func (l *Logger) write(buf []byte) {
 	if l.config.BufferSize > 0 {
 		l.mu.Lock()
 		defer l.mu.Unlock()
-
+		
 		if len(l.buffer)+len(buf) > l.config.BufferSize {
 			l.flush()
 		}
 		l.buffer = append(l.buffer, buf...)
 		l.buffer = append(l.buffer, '\n')
 	} else {
-		l.config.Output.Write(buf)
-		l.config.Output.Write([]byte{'\n'})
+		_, _ = l.config.Output.Write(buf)
+		_, _ = l.config.Output.Write([]byte{'\n'})
 	}
 }
 
@@ -282,7 +282,7 @@ func (l *Logger) Flush() {
 // It must be called with l.mu held.
 func (l *Logger) flush() {
 	if len(l.buffer) > 0 {
-		l.config.Output.Write(l.buffer)
+		_, _ = l.config.Output.Write(l.buffer)
 		l.buffer = l.buffer[:0]
 	}
 }
@@ -337,7 +337,7 @@ func (cl *ContextLogger) Panic(msg string, fields ...Field) {
 
 func (cl *ContextLogger) extractContextFields(fields []Field) []Field {
 	contextFields := make([]Field, 0, 4)
-
+	
 	if cl.ctxFunc != nil {
 		ctx := cl.ctxFunc()
 		if traceID := ctx.Value("traceID"); traceID != nil {
@@ -347,26 +347,26 @@ func (cl *ContextLogger) extractContextFields(fields []Field) []Field {
 			contextFields = append(contextFields, Field{Key: "spanID", Value: spanID})
 		}
 	}
-
+	
 	return append(contextFields, fields...)
 }
 
 func (l *Logger) appendText(buf []byte, level Level, msg string, fields ...Field) []byte {
 	now := time.Now().UTC()
-
+	
 	buf = append(buf, now.Format("2006-01-02T15:04:05.000Z07:00")...)
 	buf = append(buf, ' ')
 	buf = append(buf, level.String()...)
 	buf = append(buf, ' ')
 	buf = append(buf, msg...)
-
+	
 	for _, field := range fields {
 		buf = append(buf, ' ')
 		buf = append(buf, field.Key...)
 		buf = append(buf, '=')
 		buf = appendValue(buf, field.Value)
 	}
-
+	
 	return buf
 }
 
@@ -385,7 +385,7 @@ func appendValue(buf []byte, value interface{}) []byte {
 	case int64:
 		return appendInt(buf, v)
 	case float64:
-		return appendFloat(buf, v)
+		return appendJSONFloat(buf, v)
 	case bool:
 		if v {
 			buf = append(buf, "true"...)
@@ -413,12 +413,12 @@ func appendInt(buf []byte, i int64) []byte {
 	if i == 0 {
 		return append(buf, '0')
 	}
-
+	
 	if i < 0 {
 		buf = append(buf, '-')
 		i = -i
 	}
-
+	
 	var tmp [20]byte
 	idx := 20
 	for i > 0 {
@@ -426,11 +426,6 @@ func appendInt(buf []byte, i int64) []byte {
 		tmp[idx] = byte('0' + i%10)
 		i /= 10
 	}
-
+	
 	return append(buf, tmp[idx:]...)
-}
-
-	// Use 'g' format for compact representation, 6 digits precision (like fmt)
-	s := strconv.FormatFloat(f, 'g', -1, 64)
-	return append(buf, s...)
 }
