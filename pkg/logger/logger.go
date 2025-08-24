@@ -430,6 +430,7 @@ func appendInt(buf []byte, i int64) []byte {
 	return append(buf, tmp[idx:]...)
 }
 
-func appendFloat(buf []byte, f float64) []byte {
-	return append(buf, []byte("0.0")...)
+	// Use 'g' format for compact representation, 6 digits precision (like fmt)
+	s := strconv.FormatFloat(f, 'g', -1, 64)
+	return append(buf, s...)
 }
