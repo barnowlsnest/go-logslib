@@ -21,6 +21,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -385,7 +386,7 @@ func appendValue(buf []byte, value interface{}) []byte {
 	case int64:
 		return appendInt(buf, v)
 	case float64:
-		return appendJSONFloat(buf, v)
+		return appendFloat(buf, v)
 	case bool:
 		if v {
 			buf = append(buf, "true"...)
@@ -428,4 +429,10 @@ func appendInt(buf []byte, i int64) []byte {
 	}
 
 	return append(buf, tmp[idx:]...)
+}
+
+// appendFloat appends the string representation of a float64 to the buffer.
+func appendFloat(buf []byte, f float64) []byte {
+	// Use 'g' format for compact representation, 6 digits precision, -1 for all digits necessary
+	return append(buf, strconv.FormatFloat(f, 'g', -1, 64)...)
 }
