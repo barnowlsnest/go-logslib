@@ -21,6 +21,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -262,8 +263,8 @@ func (l *Logger) write(buf []byte) {
 		l.buffer = append(l.buffer, buf...)
 		l.buffer = append(l.buffer, '\n')
 	} else {
-		l.config.Output.Write(buf)
-		l.config.Output.Write([]byte{'\n'})
+		_, _ = l.config.Output.Write(buf)
+		_, _ = l.config.Output.Write([]byte{'\n'})
 	}
 }
 
@@ -282,7 +283,7 @@ func (l *Logger) Flush() {
 // It must be called with l.mu held.
 func (l *Logger) flush() {
 	if len(l.buffer) > 0 {
-		l.config.Output.Write(l.buffer)
+		_, _ = l.config.Output.Write(l.buffer)
 		l.buffer = l.buffer[:0]
 	}
 }
@@ -430,7 +431,8 @@ func appendInt(buf []byte, i int64) []byte {
 	return append(buf, tmp[idx:]...)
 }
 
-	// Use 'g' format for compact representation, 6 digits precision (like fmt)
-	s := strconv.FormatFloat(f, 'g', -1, 64)
-	return append(buf, s...)
+// appendFloat appends the string representation of a float64 to the buffer.
+func appendFloat(buf []byte, f float64) []byte {
+	// Use 'g' format for compact representation, 6 digits precision, -1 for all digits necessary
+	return append(buf, strconv.FormatFloat(f, 'g', -1, 64)...)
 }
