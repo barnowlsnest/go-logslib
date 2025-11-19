@@ -77,8 +77,8 @@ func TestLogger_WithContext(t *testing.T) {
 		Output: buf,
 	})
 
-	ctx := context.WithValue(context.Background(), "traceID", "trace123")
-	ctx = context.WithValue(ctx, "spanID", "span456")
+	ctx := context.WithValue(context.Background(), contextKey("traceID"), "trace123")
+	ctx = context.WithValue(ctx, contextKey("spanID"), "span456")
 
 	contextLogger := logger.WithContext(func() context.Context { return ctx })
 	contextLogger.Info("test message", Field{Key: "custom", Value: "field"})
@@ -219,7 +219,7 @@ func TestContextFieldsExtraction(t *testing.T) {
 		Output: buf,
 	})
 
-	ctx := context.WithValue(context.Background(), "traceID", "trace123")
+	ctx := context.WithValue(context.Background(), contextKey("traceID"), "trace123")
 	contextLogger := logger.WithContext(func() context.Context { return ctx })
 
 	contextLogger.Info("test")
@@ -238,7 +238,7 @@ func TestLogger_WithStaticContext(t *testing.T) {
 		Output: buf,
 	})
 
-	ctx := context.WithValue(context.Background(), "traceID", "static123")
+	ctx := context.WithValue(context.Background(), contextKey("traceID"), "static123")
 	contextLogger := logger.WithStaticContext(ctx)
 
 	contextLogger.Info("test message")
@@ -259,7 +259,7 @@ func TestLogger_DynamicContext(t *testing.T) {
 	traceCounter := 0
 	contextLogger := logger.WithContext(func() context.Context {
 		traceCounter++
-		return context.WithValue(context.Background(), "traceID", "dynamic"+string(rune('0'+traceCounter)))
+		return context.WithValue(context.Background(), contextKey("traceID"), "dynamic"+string(rune('0'+traceCounter)))
 	})
 
 	contextLogger.Info("first message")

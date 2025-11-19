@@ -23,8 +23,7 @@ func (l *Logger) appendJSON(buf []byte, level Level, msg string, fields ...Field
 	buf = append(buf, '"')
 
 	for _, field := range fields {
-		buf = append(buf, ',')
-		buf = append(buf, '"')
+		buf = append(buf, ',', '"')
 		buf = appendJSONString(buf, field.Key)
 		buf = append(buf, '"', ':')
 		buf = appendJSONValue(buf, field.Value)

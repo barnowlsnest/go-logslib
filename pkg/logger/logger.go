@@ -26,6 +26,9 @@ import (
 	"time"
 )
 
+// contextKey is a custom type for context keys to avoid collisions.
+type contextKey string
+
 // Level represents the severity level of a log entry.
 // Lower values indicate more verbose logging.
 type Level int8
@@ -150,7 +153,8 @@ func New(config Config) *Logger {
 
 	l.pool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, 0, 256)
+			buf := make([]byte, 0, 256)
+			return &buf
 		},
 	}
 
@@ -200,9 +204,10 @@ func (l *Logger) log(level Level, msg string, fields ...Field) {
 		return
 	}
 
-	buf := l.pool.Get().([]byte)
-	buf = buf[:0]
-	defer l.pool.Put(buf)
+	bufPtr := l.pool.Get().(*[]byte)
+	defer l.pool.Put(bufPtr)
+
+	buf := (*bufPtr)[:0]
 
 	switch l.config.Format {
 	case JSONFormat:
@@ -341,10 +346,10 @@ func (cl *ContextLogger) extractContextFields(fields []Field) []Field {
 
 	if cl.ctxFunc != nil {
 		ctx := cl.ctxFunc()
-		if traceID := ctx.Value("traceID"); traceID != nil {
+		if traceID := ctx.Value(contextKey("traceID")); traceID != nil {
 			contextFields = append(contextFields, Field{Key: "traceID", Value: traceID})
 		}
-		if spanID := ctx.Value("spanID"); spanID != nil {
+		if spanID := ctx.Value(contextKey("spanID")); spanID != nil {
 			contextFields = append(contextFields, Field{Key: "spanID", Value: spanID})
 		}
 	}
