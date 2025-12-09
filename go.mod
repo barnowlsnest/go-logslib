@@ -1,4 +1,4 @@
-module github.com/dshlychkou/go-logslib
+module github.com/barnowlsnest/go-logslib
 
 go 1.25
 
