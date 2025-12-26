@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	EnvLogLevel = "LOG_LEVEL"
+	EnvLogLevel      = "LOG_LEVEL"
 	EnvLogBufferSize = "LOG_BUFFER_SIZE"
-	EnvLogFormat = "LOG_FORMAT"
-	EnvDebugLevel = "debug"
-	EnvInfoLevel = "info"
-	EnvWarnLevel = "warn"
-	EnvErrorLevel = "error"
-	EnvFatalLevel = "fatal"
-	EnvPanicLevel = "panic"
+	EnvLogFormat     = "LOG_FORMAT"
+	EnvDebugLevel    = "debug"
+	EnvInfoLevel     = "info"
+	EnvWarnLevel     = "warn"
+	EnvErrorLevel    = "error"
+	EnvFatalLevel    = "fatal"
+	EnvPanicLevel    = "panic"
 	EnvLogFormatJSON = "json"
 	EnvLogFormatText = "text"
 )
@@ -39,22 +39,21 @@ func fromEnvLogLevel() Level {
 		return PanicLevel
 	default:
 		return DebugLevel
-		
 	}
 }
 
 func fromEnvBufferSize() int {
 	var (
-		err error
+		err           error
 		envBufferSize string
-		bufSize int
+		bufSize       int
 	)
 	envBufferSize = os.Getenv(EnvLogBufferSize)
 	bufSize, err = strconv.Atoi(envBufferSize)
 	if err != nil {
 		bufSize = 0
 	}
-	
+
 	return bufSize
 }
 
@@ -74,9 +73,9 @@ func fromEnvLogFormat() Format {
 
 func ConfigFromEnv() Config {
 	return Config{
-		Level: fromEnvLogLevel(),
-		Format: fromEnvLogFormat(),
+		Level:      fromEnvLogLevel(),
+		Format:     fromEnvLogFormat(),
 		BufferSize: fromEnvBufferSize(),
-		Output: os.Stdout,
+		Output:     os.Stdout,
 	}
 }
