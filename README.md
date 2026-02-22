@@ -21,25 +21,54 @@ package main
 import (
 	"os"
 	
-	"github.com/barnowlsnest/go-logslib/pkg"
+	"github.com/barnowlsnest/go-logslib/pkg/logger"
 )
 
 func main() {
 	// Create a new logger
-	logger := pkg.New(pkg.Config{
-		Level:  pkg.InfoLevel,
-		Format: pkg.JSONFormat,
+	log := logger.New(logger.Config{
+		Level:  logger.InfoLevel,
+		Format: logger.JSONFormat,
 		Output: os.Stdout,
 	})
 	
 	// Simple logging
-	logger.Info("Application started")
+	log.Info("Application started")
 	
 	// Structured logging with fields
-	logger.Info("User logged in",
-		pkg.Field{Key: "userID", Value: 12345},
-		pkg.Field{Key: "email", Value: "user@example.com"},
+	log.Info("User logged in",
+		logger.Field{Key: "userID", Value: 12345},
+		logger.Field{Key: "email", Value: "user@example.com"},
 	)
+}
+```
+
+## Shared Logger
+
+The `sharedlog` package provides a zero-configuration singleton logger that always outputs JSON in UTC to stdout. It reads `LOG_LEVEL` and `LOG_BUFFER_SIZE` from the environment but ignores `LOG_FORMAT` and `LOG_USE_UTC` (always JSON + UTC).
+
+```go
+package main
+
+import (
+	"errors"
+
+	"github.com/barnowlsnest/go-logslib/pkg/sharedlog"
+)
+
+func main() {
+	// Simple logging
+	sharedlog.Info("Application started")
+	sharedlog.Debug("cache miss", sharedlog.F("key", "user:42"))
+
+	// Error and Panic accept an error directly
+	err := errors.New("connection refused")
+	sharedlog.Error(err, sharedlog.F("host", "db.local"))
+
+	// Access the underlying *logger.Logger for advanced use
+	log := sharedlog.Logger()
+	log.Warn("disk usage high", sharedlog.F("pct", 92))
+	log.Flush()
 }
 ```
 
