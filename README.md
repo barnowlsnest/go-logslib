@@ -139,7 +139,7 @@ Benchmarks on Apple M1 Max:
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.25.7 or later
 
 ### Performance Requirements
 
