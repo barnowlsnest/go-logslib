@@ -21,7 +21,7 @@ package main
 import (
 	"os"
 	
-	"github.com/barnowlsnest/go-logslib/pkg/logger"
+	"github.com/barnowlsnest/go-logslib/v2/pkg/logger"
 )
 
 func main() {
@@ -53,7 +53,7 @@ package main
 import (
 	"errors"
 
-	"github.com/barnowlsnest/go-logslib/pkg/sharedlog"
+	"github.com/barnowlsnest/go-logslib/v2/pkg/sharedlog"
 )
 
 func main() {

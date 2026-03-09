@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-High-performance Go logging library (`github.com/barnowlsnest/go-logslib`) targeting production backend services. Prioritizes minimal memory allocations (0-5 per op) and fast execution (20-600 ns/op) over features.
+High-performance Go logging library (`github.com/barnowlsnest/go-logslib/v2`) targeting production backend services. Prioritizes minimal memory allocations (0-5 per op) and fast execution (20-600 ns/op) over features.
 
 ## Development Commands
 
@@ -43,6 +43,16 @@ Two packages under `pkg/`:
 - **Buffer pooling**: `sync.Pool` of `*[]byte` avoids per-call allocations.
 - **Optional buffering**: When `Config.BufferSize > 0`, log entries accumulate in an internal buffer and flush when full or on `Flush()`.
 - **Context logging**: `WithContext(func() context.Context)` for dynamic contexts (HTTP handlers), `WithStaticContext(ctx)` for fixed contexts. Extracts `traceID` and `spanID` via `contextKey` typed keys.
+
+## Validation
+
+After every code change, run the full sanity check:
+
+```bash
+task sanity
+```
+
+This runs formatting, linting, building, vetting, and tests (including benchmarks) in one step.
 
 ## Testing
 

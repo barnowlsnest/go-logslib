@@ -5,7 +5,7 @@ package sharedlog
 import (
 	"sync"
 
-	"github.com/barnowlsnest/go-logslib/pkg/logger"
+	"github.com/barnowlsnest/go-logslib/v2/pkg/logger"
 )
 
 var (
