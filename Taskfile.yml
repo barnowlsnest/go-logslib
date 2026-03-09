@@ -6,7 +6,7 @@ vars:
   ALL_GO_FILES: ./...
 
 env:
-  MODULE_PATH: github.com/barnowlsnest/go-logslib
+  MODULE_PATH: github.com/barnowlsnest/go-logslib/v2
 
 tasks:
   go:mod:tidy:

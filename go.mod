@@ -1,4 +1,4 @@
-module github.com/barnowlsnest/go-logslib
+module github.com/barnowlsnest/go-logslib/v2
 
 go 1.25.7
 
