@@ -1,6 +1,6 @@
 module github.com/barnowlsnest/go-logslib/v2
 
-go 1.25.7
+go 1.26.1
 
 require github.com/stretchr/testify v1.11.1
 
