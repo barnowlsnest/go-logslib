@@ -80,7 +80,7 @@ func TestLogger_WithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), contextKey("traceID"), "trace123")
 	ctx = context.WithValue(ctx, contextKey("spanID"), "span456")
 
-	contextLogger := logger.WithContext(func() context.Context { return ctx })
+	contextLogger := logger.WithContext(ctx)
 	contextLogger.Info("test message", Field{Key: "custom", Value: "field"})
 
 	output := buf.String()
@@ -220,31 +220,13 @@ func TestContextFieldsExtraction(t *testing.T) {
 	})
 
 	ctx := context.WithValue(context.Background(), contextKey("traceID"), "trace123")
-	contextLogger := logger.WithContext(func() context.Context { return ctx })
+	contextLogger := logger.WithContext(ctx)
 
 	contextLogger.Info("test")
 
 	output := buf.String()
 	assert.Contains(t, output, `"traceID":"trace123"`)
 	assert.NotContains(t, output, `"spanID"`)
-}
-
-func TestLogger_WithStaticContext(t *testing.T) {
-	buf := &bytes.Buffer{}
-
-	logger := New(Config{
-		Level:  InfoLevel,
-		Format: JSONFormat,
-		Output: buf,
-	})
-
-	ctx := context.WithValue(context.Background(), contextKey("traceID"), "static123")
-	contextLogger := logger.WithStaticContext(ctx)
-
-	contextLogger.Info("test message")
-
-	output := buf.String()
-	assert.Contains(t, output, `"traceID":"static123"`)
 }
 
 func TestLogger_DynamicContext(t *testing.T) {
@@ -257,7 +239,7 @@ func TestLogger_DynamicContext(t *testing.T) {
 	})
 
 	traceCounter := 0
-	contextLogger := logger.WithContext(func() context.Context {
+	contextLogger := logger.WithContextFunc(func() context.Context {
 		traceCounter++
 		return context.WithValue(context.Background(), contextKey("traceID"), "dynamic"+string(rune('0'+traceCounter)))
 	})
@@ -268,22 +250,4 @@ func TestLogger_DynamicContext(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, `"traceID":"dynamic1"`)
 	assert.Contains(t, output, `"traceID":"dynamic2"`)
-}
-
-func TestLogger_NilContextFunc(t *testing.T) {
-	buf := &bytes.Buffer{}
-
-	logger := New(Config{
-		Level:  InfoLevel,
-		Format: JSONFormat,
-		Output: buf,
-	})
-
-	contextLogger := logger.WithContext(nil)
-	contextLogger.Info("test message", Field{Key: "custom", Value: "field"})
-
-	output := buf.String()
-	assert.NotContains(t, output, `"traceID"`)
-	assert.NotContains(t, output, `"spanID"`)
-	assert.Contains(t, output, `"custom":"field"`)
 }

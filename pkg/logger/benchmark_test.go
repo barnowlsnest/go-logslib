@@ -115,7 +115,7 @@ func BenchmarkLogger_WithContext(b *testing.B) {
 
 	ctx := context.WithValue(context.Background(), contextKey("traceID"), "trace123456")
 	ctx = context.WithValue(ctx, contextKey("spanID"), "span789012")
-	contextLogger := logger.WithContext(func() context.Context { return ctx })
+	contextLogger := logger.WithContextFunc(func() context.Context { return ctx })
 
 	b.ResetTimer()
 	b.ReportAllocs()
