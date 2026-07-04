@@ -19,9 +19,11 @@ package logger
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -57,6 +59,28 @@ const (
 
 	DefaultTimeFormat = "2006-01-02T15:04:05.000Z07:00"
 )
+
+var ErrUnknownLogLevel = errors.New("unknown log level")
+
+func LogLevelFromString(str string) (Level, error) {
+	str = strings.ToLower(str)
+	switch str {
+	case "debug":
+		return DebugLevel, nil
+	case "info":
+		return InfoLevel, nil
+	case "warn":
+		return WarnLevel, nil
+	case "error":
+		return ErrorLevel, nil
+	case "fatal":
+		return FatalLevel, nil
+	case "panic":
+		return PanicLevel, nil
+	default:
+		return -2, ErrUnknownLogLevel
+	}
+}
 
 // String returns the string representation of the log level.
 func (l Level) String() string {
@@ -133,6 +157,11 @@ type Logger struct {
 	mu     sync.Mutex
 }
 
+const (
+	FieldTraceID = "traceID"
+	FieldSpanID  = "spanID"
+)
+
 // New creates a new Logger instance with the given configuration.
 //
 // If config.Output is nil, it defaults to os.Stdout.
@@ -167,37 +196,30 @@ func New(config Config) *Logger {
 	return l
 }
 
-// WithContext creates a ContextLogger that automatically extracts context
+// WithContextFunc creates a ContextLogger that automatically extracts context
 // information from the provided context function for each log entry.
 //
 // This is the recommended approach for dynamic contexts (e.g., HTTP request contexts)
 // as it resolves the context at log time, ensuring fresh context values.
-//
-// Example:
-//
-//	func handleRequest(w http.ResponseWriter, r *http.Request) {
-//		contextLogger := logger.WithContext(func() context.Context {
-//			return r.Context() // Always gets fresh request context
-//		})
-//		contextLogger.Info("Processing request")
-//	}
-func (l *Logger) WithContext(ctxFunc func() context.Context) *ContextLogger {
+func (l *Logger) WithContextFunc(ctxFunc func() context.Context) *ContextLogger {
 	return &ContextLogger{
 		logger:  l,
 		ctxFunc: ctxFunc,
 	}
 }
 
-// WithStaticContext creates a ContextLogger with a static context that won't change.
+// WithContext creates a ContextLogger that automatically extracts context
+func (l *Logger) WithContext(ctx context.Context) *ContextLogger {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	return l.WithContextFunc(func() context.Context { return ctx })
+}
+
+// WithStaticContext creates a ContextLogger with a context that won't change.
 //
-// This is useful when you have a context that remains constant throughout
-// the logger's lifetime. For dynamic contexts, prefer WithContext().
-//
-// Example:
-//
-//	ctx := context.WithValue(context.Background(), "serviceID", "user-service")
-//	contextLogger := logger.WithStaticContext(ctx)
-//	contextLogger.Info("Service started")
+// Deprecated: Use WithContext() instead.
 func (l *Logger) WithStaticContext(ctx context.Context) *ContextLogger {
 	return &ContextLogger{
 		logger:  l,
@@ -302,8 +324,6 @@ func (l *Logger) flush() {
 // ContextLogger is a logger that automatically extracts context information
 // for each log entry. It provides the same logging methods as Logger but
 // includes context fields like traceID and spanID.
-//
-// ContextLogger is created using Logger.WithContext() or Logger.WithStaticContext().
 type ContextLogger struct {
 	logger  *Logger
 	ctxFunc func() context.Context
@@ -352,11 +372,11 @@ func (cl *ContextLogger) extractContextFields(fields []Field) []Field {
 
 	if cl.ctxFunc != nil {
 		ctx := cl.ctxFunc()
-		if traceID := ctx.Value(contextKey("traceID")); traceID != nil {
-			contextFields = append(contextFields, Field{Key: "traceID", Value: traceID})
+		if traceID := ctx.Value(contextKey(FieldTraceID)); traceID != nil {
+			contextFields = append(contextFields, Field{Key: FieldTraceID, Value: traceID})
 		}
-		if spanID := ctx.Value(contextKey("spanID")); spanID != nil {
-			contextFields = append(contextFields, Field{Key: "spanID", Value: spanID})
+		if spanID := ctx.Value(contextKey(FieldSpanID)); spanID != nil {
+			contextFields = append(contextFields, Field{Key: FieldSpanID, Value: spanID})
 		}
 	}
 
