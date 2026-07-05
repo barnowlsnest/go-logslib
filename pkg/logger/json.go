@@ -62,7 +62,7 @@ func appendJSONString(buf []byte, s string) []byte {
 }
 
 // appendJSONValue appends a typed value to the JSON buffer with proper JSON formatting.
-// It supports string, int, int64, float64, and bool types. Unknown types are
+// It supports string, int, int64, uint, uint64, float64, and bool types. Unknown types are
 // represented as the string "unknown".
 func appendJSONValue(buf []byte, value interface{}) []byte {
 	switch v := value.(type) {
@@ -74,6 +74,10 @@ func appendJSONValue(buf []byte, value interface{}) []byte {
 		buf = appendInt(buf, int64(v))
 	case int64:
 		buf = appendInt(buf, v)
+	case uint:
+		buf = appendUint(buf, uint64(v))
+	case uint64:
+		buf = appendUint(buf, v)
 	case float64:
 		buf = appendJSONFloat(buf, v)
 	case bool:
