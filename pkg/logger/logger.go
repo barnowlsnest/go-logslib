@@ -419,6 +419,10 @@ func appendValue(buf []byte, value interface{}) []byte {
 		return appendInt(buf, int64(v))
 	case int64:
 		return appendInt(buf, v)
+	case uint:
+		return appendUint(buf, uint64(v))
+	case uint64:
+		return appendUint(buf, v)
 	case float64:
 		return appendFloat(buf, v)
 	case bool:
@@ -460,6 +464,23 @@ func appendInt(buf []byte, i int64) []byte {
 		idx--
 		tmp[idx] = byte('0' + i%10)
 		i /= 10
+	}
+
+	return append(buf, tmp[idx:]...)
+}
+
+// appendUint appends the base-10 representation of an unsigned integer to the buffer.
+func appendUint(buf []byte, u uint64) []byte {
+	if u == 0 {
+		return append(buf, '0')
+	}
+
+	var tmp [20]byte
+	idx := 20
+	for u > 0 {
+		idx--
+		tmp[idx] = byte('0' + u%10)
+		u /= 10
 	}
 
 	return append(buf, tmp[idx:]...)
