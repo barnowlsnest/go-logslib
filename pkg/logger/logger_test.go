@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -178,6 +179,44 @@ func TestFieldTypes(t *testing.T) {
 	assert.Contains(t, output, `"int64":123`)
 	assert.Contains(t, output, `"float":3.14`)
 	assert.Contains(t, output, `"bool":true`)
+}
+
+func TestFieldTypes_Float32AndDuration_JSON(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	logger := New(Config{
+		Level:  InfoLevel,
+		Format: JSONFormat,
+		Output: buf,
+	})
+
+	logger.Info("test",
+		Field{Key: "ratio", Value: float32(0.5)},
+		Field{Key: "latency", Value: 1500 * time.Millisecond},
+	)
+
+	output := buf.String()
+	assert.Contains(t, output, `"ratio":0.5`)
+	assert.Contains(t, output, `"latency":"1.5s"`)
+}
+
+func TestFieldTypes_Float32AndDuration_Text(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	logger := New(Config{
+		Level:  InfoLevel,
+		Format: TextFormat,
+		Output: buf,
+	})
+
+	logger.Info("test",
+		Field{Key: "ratio", Value: float32(0.5)},
+		Field{Key: "latency", Value: 1500 * time.Millisecond},
+	)
+
+	output := buf.String()
+	assert.Contains(t, output, "ratio=0.5")
+	assert.Contains(t, output, "latency=1.5s")
 }
 
 func TestLevelString(t *testing.T) {
