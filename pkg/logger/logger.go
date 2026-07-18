@@ -121,7 +121,9 @@ type Field struct {
 	// Key is the field name
 	Key string
 
-	// Value is the field value, can be string, int, int64, float64, or bool
+	// Value is the field value. Supported types are string, int, int64, uint,
+	// uint64, float32, float64, bool, and time.Duration (rendered as its string
+	// form, e.g. "1.5s"). Other types are rendered as "unknown".
 	Value interface{}
 }
 
@@ -187,7 +189,7 @@ func New(config Config) *Logger {
 	}
 
 	l.pool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			buf := make([]byte, 0, 256)
 			return &buf
 		},
@@ -280,6 +282,8 @@ func (l *Logger) Fatal(msg string, fields ...Field) {
 
 // Panic logs a message at PanicLevel, then panics with the message.
 // This function does not return.
+//
+// Deprecated: Use Error() or Fatal() instead. Panic-level logging is generally discouraged in production code.
 func (l *Logger) Panic(msg string, fields ...Field) {
 	l.log(PanicLevel, msg, fields...)
 	panic(msg)
@@ -423,6 +427,8 @@ func appendValue(buf []byte, value interface{}) []byte {
 		return appendUint(buf, uint64(v))
 	case uint64:
 		return appendUint(buf, v)
+	case float32:
+		return appendFloat32(buf, v)
 	case float64:
 		return appendFloat(buf, v)
 	case bool:
@@ -431,6 +437,8 @@ func appendValue(buf []byte, value interface{}) []byte {
 		} else {
 			buf = append(buf, "false"...)
 		}
+	case time.Duration:
+		return append(buf, v.String()...)
 	default:
 		buf = append(buf, '"')
 		buf = append(buf, "unknown"...)
@@ -490,4 +498,11 @@ func appendUint(buf []byte, u uint64) []byte {
 func appendFloat(buf []byte, f float64) []byte {
 	// Use 'g' format for compact representation, 6 digits precision, -1 for all digits necessary
 	return append(buf, strconv.FormatFloat(f, 'g', -1, 64)...)
+}
+
+// appendFloat32 appends the string representation of a float32 to the buffer.
+// It formats using 32-bit precision to avoid the artifacts that arise from
+// widening a float32 to float64 (e.g. 0.1 becoming 0.10000000149011612).
+func appendFloat32(buf []byte, f float32) []byte {
+	return append(buf, strconv.FormatFloat(float64(f), 'g', -1, 32)...)
 }

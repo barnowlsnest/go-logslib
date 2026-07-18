@@ -62,8 +62,9 @@ func appendJSONString(buf []byte, s string) []byte {
 }
 
 // appendJSONValue appends a typed value to the JSON buffer with proper JSON formatting.
-// It supports string, int, int64, uint, uint64, float64, and bool types. Unknown types are
-// represented as the string "unknown".
+// It supports string, int, int64, uint, uint64, float32, float64, bool, and
+// time.Duration (rendered as its string form, e.g. "1.5s") types. Unknown types
+// are represented as the string "unknown".
 func appendJSONValue(buf []byte, value interface{}) []byte {
 	switch v := value.(type) {
 	case string:
@@ -78,6 +79,8 @@ func appendJSONValue(buf []byte, value interface{}) []byte {
 		buf = appendUint(buf, uint64(v))
 	case uint64:
 		buf = appendUint(buf, v)
+	case float32:
+		buf = appendJSONFloat(buf, float64(v))
 	case float64:
 		buf = appendJSONFloat(buf, v)
 	case bool:
@@ -86,6 +89,10 @@ func appendJSONValue(buf []byte, value interface{}) []byte {
 		} else {
 			buf = append(buf, "false"...)
 		}
+	case time.Duration:
+		buf = append(buf, '"')
+		buf = appendJSONString(buf, v.String())
+		buf = append(buf, '"')
 	default:
 		buf = append(buf, '"')
 		buf = appendJSONString(buf, "unknown")
