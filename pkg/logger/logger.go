@@ -21,11 +21,14 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // contextKey is a custom type for context keys to avoid collisions.
@@ -124,7 +127,7 @@ type Field struct {
 	// Value is the field value. Supported types are string, int, int64, uint,
 	// uint64, float32, float64, bool, and time.Duration (rendered as its string
 	// form, e.g. "1.5s"). Other types are rendered as "unknown".
-	Value interface{}
+	Value any
 }
 
 // Config holds the configuration for a Logger instance.
@@ -196,6 +199,64 @@ func New(config Config) *Logger {
 	}
 
 	return l
+}
+
+// StringField creates a Field with a string value.
+func StringField(name, value string) Field {
+	return Field{Key: name, Value: value}
+}
+
+// IntField creates a Field with an int value.
+func IntField(name string, value int) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Int8Field(name string, value int8) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Int16Field(name string, value int16) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Int64Field(name string, value int64) Field {
+	return Field{Key: name, Value: value}
+}
+
+func UintField(name string, value uint) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Uint8Field(name string, value uint8) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Uint16Field(name string, value uint16) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Uint64Field(name string, value uint64) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Uint32Field(name string, value uint32) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Float32Field(name string, value float32) Field {
+	return Field{Key: name, Value: value}
+}
+
+func Float64Field(name string, value float64) Field {
+	return Field{Key: name, Value: value}
+}
+
+func BoolField(name string, value bool) Field {
+	return Field{Key: name, Value: value}
+}
+
+func DurationField(name string, value time.Duration) Field {
+	return Field{Key: name, Value: value}
 }
 
 // WithContextFunc creates a ContextLogger that automatically extracts context
@@ -409,51 +470,165 @@ func (l *Logger) appendText(buf []byte, level Level, msg string, fields ...Field
 	return buf
 }
 
-func appendValue(buf []byte, value interface{}) []byte {
+//nolint:gocyclo
+func appendValue(buf []byte, value any) []byte {
 	switch v := value.(type) {
+	case nil:
+		return append(buf, "<nil>"...)
 	case string:
-		if needsQuoting(v) {
-			buf = append(buf, '"')
-			buf = append(buf, v...)
-			buf = append(buf, '"')
-		} else {
-			buf = append(buf, v...)
-		}
+		return appendString(buf, v)
+	case []byte:
+		return appendString(buf, string(v))
 	case int:
 		return appendInt(buf, int64(v))
 	case int64:
 		return appendInt(buf, v)
+	case int32:
+		return appendInt(buf, int64(v))
+	case int16:
+		return appendInt(buf, int64(v))
+	case int8:
+		return appendInt(buf, int64(v))
 	case uint:
 		return appendUint(buf, uint64(v))
 	case uint64:
 		return appendUint(buf, v)
-	case float32:
-		return appendFloat32(buf, v)
-	case float64:
-		return appendFloat(buf, v)
+	case uint32:
+		return appendUint(buf, uint64(v))
+	case uint16:
+		return appendUint(buf, uint64(v))
+	case uint8:
+		return appendUint(buf, uint64(v))
+	case uintptr:
+		return appendUint(buf, uint64(v))
 	case bool:
 		if v {
-			buf = append(buf, "true"...)
-		} else {
-			buf = append(buf, "false"...)
+			return append(buf, "true"...)
 		}
+		return append(buf, "false"...)
+	case float64:
+		return appendFloat(buf, v, 64)
+	case float32:
+		return appendFloat(buf, float64(v), 32)
 	case time.Duration:
-		return append(buf, v.String()...)
+		return appendDuration(buf, v)
+	case time.Time:
+		return v.AppendFormat(buf, time.RFC3339Nano)
+	case error:
+		return appendString(buf, v.Error())
 	default:
-		buf = append(buf, '"')
-		buf = append(buf, "unknown"...)
-		buf = append(buf, '"')
+		return appendReflect(buf, value)
 	}
-	return buf
+}
+
+func appendReflect(buf []byte, value any) []byte {
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.String:
+		return appendString(buf, rv.String())
+	case reflect.Bool:
+		if rv.Bool() {
+			return append(buf, "true"...)
+		}
+		return append(buf, "false"...)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.AppendInt(buf, rv.Int(), 10)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return strconv.AppendUint(buf, rv.Uint(), 10)
+	case reflect.Float32:
+		return appendFloat(buf, rv.Float(), 32)
+	case reflect.Float64:
+		return appendFloat(buf, rv.Float(), 64)
+	case reflect.Invalid:
+		return append(buf, "<nil>"...)
+	default:
+		return append(buf, `"<unsupported>"`...)
+	}
+}
+
+const hex = "0123456789abcdef"
+
+func appendString(buf []byte, s string) []byte {
+	if !needsQuoting(s) {
+		return append(buf, s...)
+	}
+	buf = append(buf, '"')
+	start := 0
+	for i := 0; i < len(s); {
+		if c := s[i]; c < utf8.RuneSelf {
+			if safeChar(c) {
+				i++
+				continue
+			}
+			buf = append(buf, s[start:i]...)
+			switch c {
+			case '"':
+				buf = append(buf, '\\', '"')
+			case '\\':
+				buf = append(buf, '\\', '\\')
+			case '\n':
+				buf = append(buf, '\\', 'n')
+			case '\r':
+				buf = append(buf, '\\', 'r')
+			case '\t':
+				buf = append(buf, '\\', 't')
+			default:
+				buf = append(buf, '\\', 'u', '0', '0', hex[c>>4], hex[c&0xf])
+			}
+			i++
+			start = i
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			buf = append(buf, s[start:i]...)
+			buf = append(buf, `\ufffd`...)
+			i += size
+			start = i
+			continue
+		}
+		i += size
+	}
+	buf = append(buf, s[start:]...)
+
+	return append(buf, '"')
+}
+
+func safeChar(c byte) bool {
+	return c >= 0x20 && c != '"' && c != '\\' && c != 0x7f
 }
 
 func needsQuoting(s string) bool {
-	for _, r := range s {
-		if r == ' ' || r == '=' || r == '"' {
+	if s == "" {
+		return true
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c <= ' ' || c == '"' || c == '\\' || c == '=' || c >= utf8.RuneSelf {
 			return true
 		}
 	}
+
 	return false
+}
+
+func appendFloat(buf []byte, f float64, bits int) []byte {
+	switch {
+	case math.IsNaN(f):
+		return append(buf, `"NaN"`...)
+	case math.IsInf(f, 1):
+		return append(buf, `"+Inf"`...)
+	case math.IsInf(f, -1):
+		return append(buf, `"-Inf"`...)
+	}
+
+	return strconv.AppendFloat(buf, f, 'g', -1, bits)
+}
+
+func appendDuration(buf []byte, d time.Duration) []byte {
+	var a [32]byte
+
+	return append(buf, a[:copy(a[:], d.String())]...)
 }
 
 func appendInt(buf []byte, i int64) []byte {
@@ -492,17 +667,4 @@ func appendUint(buf []byte, u uint64) []byte {
 	}
 
 	return append(buf, tmp[idx:]...)
-}
-
-// appendFloat appends the string representation of a float64 to the buffer.
-func appendFloat(buf []byte, f float64) []byte {
-	// Use 'g' format for compact representation, 6 digits precision, -1 for all digits necessary
-	return append(buf, strconv.FormatFloat(f, 'g', -1, 64)...)
-}
-
-// appendFloat32 appends the string representation of a float32 to the buffer.
-// It formats using 32-bit precision to avoid the artifacts that arise from
-// widening a float32 to float64 (e.g. 0.1 becoming 0.10000000149011612).
-func appendFloat32(buf []byte, f float32) []byte {
-	return append(buf, strconv.FormatFloat(float64(f), 'g', -1, 32)...)
 }

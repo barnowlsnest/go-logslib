@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/barnowlsnest/go-logslib/v2/pkg/logger"
 )
 
 // resetSingleton resets the package-level singleton only in testing purposes, so each test gets a fresh logger
@@ -54,7 +56,7 @@ func TestInfo(t *testing.T) {
 
 func TestDebug(t *testing.T) {
 	out := captureStdout(t, func() {
-		Debug("debug trace", F("component", "cache"))
+		Debug("debug trace", logger.StringField("component", "cache"))
 	})
 
 	assert.Contains(t, out, `"level":"DEBUG"`)
@@ -64,7 +66,7 @@ func TestDebug(t *testing.T) {
 
 func TestError(t *testing.T) {
 	out := captureStdout(t, func() {
-		Error(errors.New("something broke"), F("code", 500))
+		Error(errors.New("something broke"), logger.IntField("code", 500))
 	})
 
 	assert.Contains(t, out, `"level":"ERROR"`)
@@ -73,7 +75,7 @@ func TestError(t *testing.T) {
 }
 
 func TestF(t *testing.T) {
-	f := F("key", "value")
+	f := logger.StringField("key", "value")
 	assert.Equal(t, "key", f.Key)
 	assert.Equal(t, "value", f.Value)
 }
