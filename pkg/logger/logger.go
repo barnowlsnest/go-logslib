@@ -522,10 +522,19 @@ func appendValue(buf []byte, value any) []byte {
 }
 
 func appendReflect(buf []byte, value any) []byte {
+	return appendReflectValue(buf, value, appendString, "<nil>")
+}
+
+// appendReflectValue handles named types whose underlying kind is representable
+// as a scalar (e.g. `type Status string`), which a concrete type switch cannot
+// match directly. The format-specific parts are injected: appendStr controls how
+// string kinds are rendered (quoted vs. quote-if-needed) and nilLit is emitted
+// for an invalid/nil value.
+func appendReflectValue(buf []byte, value any, appendStr func([]byte, string) []byte, nilLit string) []byte {
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
 	case reflect.String:
-		return appendString(buf, rv.String())
+		return appendStr(buf, rv.String())
 	case reflect.Bool:
 		if rv.Bool() {
 			return append(buf, "true"...)
@@ -540,7 +549,7 @@ func appendReflect(buf []byte, value any) []byte {
 	case reflect.Float64:
 		return appendFloat(buf, rv.Float(), 64)
 	case reflect.Invalid:
-		return append(buf, "<nil>"...)
+		return append(buf, nilLit...)
 	default:
 		return append(buf, `"<unsupported>"`...)
 	}

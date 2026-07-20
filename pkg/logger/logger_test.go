@@ -200,6 +200,58 @@ func TestFieldTypes_Float32AndDuration_JSON(t *testing.T) {
 	assert.Contains(t, output, `"latency":"1.5s"`)
 }
 
+func TestFieldTypes_AllWidths_JSON(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	logger := New(Config{
+		Level:  InfoLevel,
+		Format: JSONFormat,
+		Output: buf,
+	})
+
+	logger.Info("test",
+		Int8Field("i8", -8),
+		Int16Field("i16", -16),
+		Field{Key: "i32", Value: int32(-32)},
+		UintField("u", 1),
+		Uint8Field("u8", 8),
+		Uint16Field("u16", 16),
+		Uint32Field("u32", 32),
+		Field{Key: "bytes", Value: []byte("hi")},
+		Field{Key: "err", Value: context.Canceled},
+		Field{Key: "nil", Value: nil},
+	)
+
+	output := buf.String()
+	assert.Contains(t, output, `"i8":-8`)
+	assert.Contains(t, output, `"i16":-16`)
+	assert.Contains(t, output, `"i32":-32`)
+	assert.Contains(t, output, `"u":1`)
+	assert.Contains(t, output, `"u8":8`)
+	assert.Contains(t, output, `"u16":16`)
+	assert.Contains(t, output, `"u32":32`)
+	assert.Contains(t, output, `"bytes":"hi"`)
+	assert.Contains(t, output, `"err":"context canceled"`)
+	assert.Contains(t, output, `"nil":null`)
+	assert.NotContains(t, output, "unknown")
+}
+
+func TestFieldTypes_NamedType_JSON(t *testing.T) {
+	type Status string
+
+	buf := &bytes.Buffer{}
+
+	logger := New(Config{
+		Level:  InfoLevel,
+		Format: JSONFormat,
+		Output: buf,
+	})
+
+	logger.Info("test", Field{Key: "status", Value: Status("active")})
+
+	assert.Contains(t, buf.String(), `"status":"active"`)
+}
+
 func TestFieldTypes_Float32AndDuration_Text(t *testing.T) {
 	buf := &bytes.Buffer{}
 
