@@ -25,6 +25,7 @@ func Logger() *logger.Logger {
 	return sharedLogger
 }
 
+// Deprecated: use types functions from logger package instead.
 func F(name string, value any) logger.Field {
 	return logger.Field{Key: name, Value: value}
 }
@@ -37,10 +38,19 @@ func Error(err error, fields ...logger.Field) {
 	Logger().Error(err.Error(), fields...)
 }
 
+// Deprecated: Use Error instead. This function is kept for backward compatibility.
 func Panic(err error, fields ...logger.Field) {
 	Logger().Panic(err.Error(), fields...)
 }
 
 func Info(msg string, fields ...logger.Field) {
 	Logger().Info(msg, fields...)
+}
+
+func Warn(msg string, fields ...logger.Field) {
+	Logger().Warn(msg, fields...)
+}
+
+func Fatal(msg string, fields ...logger.Field) {
+	Logger().Fatal(msg, fields...)
 }
