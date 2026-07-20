@@ -62,68 +62,76 @@ func appendJSONString(buf []byte, s string) []byte {
 }
 
 // appendJSONValue appends a typed value to the JSON buffer with proper JSON formatting.
-// It supports string, int, int64, uint, uint64, float32, float64, bool, and
-// time.Duration (rendered as its string form, e.g. "1.5s") types. Unknown types
-// are represented as the string "unknown".
-func appendJSONValue(buf []byte, value interface{}) []byte {
+// It mirrors the type coverage of appendValue so that text and JSON output agree:
+// all signed and unsigned integer widths, floats, bool, string, []byte, nil,
+// time.Duration (as its string form, e.g. "1.5s"), time.Time (RFC3339Nano), and
+// error (as its message). Named types over those kinds are handled by
+// appendJSONReflect. Anything else is rendered as the string "<unsupported>".
+//
+//nolint:gocyclo
+func appendJSONValue(buf []byte, value any) []byte {
 	switch v := value.(type) {
+	case nil:
+		return append(buf, "null"...)
 	case string:
-		buf = append(buf, '"')
-		buf = appendJSONString(buf, v)
-		buf = append(buf, '"')
+		return appendJSONQuoted(buf, v)
+	case []byte:
+		return appendJSONQuoted(buf, string(v))
 	case int:
-		buf = appendInt(buf, int64(v))
+		return appendInt(buf, int64(v))
 	case int64:
-		buf = appendInt(buf, v)
+		return appendInt(buf, v)
+	case int32:
+		return appendInt(buf, int64(v))
+	case int16:
+		return appendInt(buf, int64(v))
+	case int8:
+		return appendInt(buf, int64(v))
 	case uint:
-		buf = appendUint(buf, uint64(v))
+		return appendUint(buf, uint64(v))
 	case uint64:
-		buf = appendUint(buf, v)
-	case float32:
-		buf = appendJSONFloat(buf, float64(v))
-	case float64:
-		buf = appendJSONFloat(buf, v)
+		return appendUint(buf, v)
+	case uint32:
+		return appendUint(buf, uint64(v))
+	case uint16:
+		return appendUint(buf, uint64(v))
+	case uint8:
+		return appendUint(buf, uint64(v))
+	case uintptr:
+		return appendUint(buf, uint64(v))
 	case bool:
 		if v {
-			buf = append(buf, "true"...)
-		} else {
-			buf = append(buf, "false"...)
+			return append(buf, "true"...)
 		}
+		return append(buf, "false"...)
+	case float64:
+		return appendFloat(buf, v, 64)
+	case float32:
+		return appendFloat(buf, float64(v), 32)
 	case time.Duration:
+		return appendJSONQuoted(buf, v.String())
+	case time.Time:
 		buf = append(buf, '"')
-		buf = appendJSONString(buf, v.String())
-		buf = append(buf, '"')
+		buf = v.AppendFormat(buf, time.RFC3339Nano)
+		return append(buf, '"')
+	case error:
+		return appendJSONQuoted(buf, v.Error())
 	default:
-		buf = append(buf, '"')
-		buf = appendJSONString(buf, "unknown")
-		buf = append(buf, '"')
+		return appendJSONReflect(buf, value)
 	}
-	return buf
 }
 
-// appendJSONFloat appends a float64 value to the JSON buffer.
-// It provides basic float formatting with 3 decimal places precision for the
-// fractional part. This is optimized for performance over full precision.
-func appendJSONFloat(buf []byte, f float64) []byte {
-	if f == 0.0 {
-		return append(buf, '0')
-	}
+// appendJSONQuoted appends s as a quoted, escaped JSON string.
+func appendJSONQuoted(buf []byte, s string) []byte {
+	buf = append(buf, '"')
+	buf = appendJSONString(buf, s)
 
-	if f < 0 {
-		buf = append(buf, '-')
-		f = -f
-	}
+	return append(buf, '"')
+}
 
-	integer := int64(f)
-	fractional := f - float64(integer)
-
-	buf = appendInt(buf, integer)
-
-	if fractional > 0 {
-		buf = append(buf, '.')
-		fractional *= 1000
-		buf = appendInt(buf, int64(fractional))
-	}
-
-	return buf
+// appendJSONReflect handles named types whose underlying kind is representable
+// in JSON (e.g. `type Status string`), which the type switch in appendJSONValue
+// cannot match directly.
+func appendJSONReflect(buf []byte, value any) []byte {
+	return appendReflectValue(buf, value, appendJSONQuoted, "null")
 }
