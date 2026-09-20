@@ -1,6 +1,17 @@
 # go-logslib
 
+[![Build and Test](https://github.com/barnowlsnest/go-logslib/actions/workflows/build.yml/badge.svg)](https://github.com/barnowlsnest/go-logslib/actions/workflows/build.yml)
+[![Lint](https://github.com/barnowlsnest/go-logslib/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/barnowlsnest/go-logslib/actions/workflows/golangci-lint.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/barnowlsnest/go-logslib/v2.svg)](https://pkg.go.dev/github.com/barnowlsnest/go-logslib/v2)
+[![Go Report Card](https://goreportcard.com/badge/github.com/barnowlsnest/go-logslib/v2)](https://goreportcard.com/report/github.com/barnowlsnest/go-logslib/v2)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Simple logging library ready to Go.
+
+A small, dependency-free structured logger for production Go services. Text or
+JSON output, typed fields, context propagation and optional buffering — in about
+a thousand lines of hand-written `[]byte` appends, with no `fmt.Sprintf` and no
+`encoding/json` on the hot path.
 
 ## Features
 
@@ -13,12 +24,15 @@ Simple logging library ready to Go.
 - 📦 **Buffering**: Optional buffering for cloud cost optimization
 - ⚙️ **Env-driven config**: `ConfigFromEnv()` for 12-factor apps
 - 🔒 **Thread-safe**: Concurrent logging support
+- 🪶 **No runtime dependencies**: stdlib only (`testify` is used for tests)
 
 ## Installation
 
 ```bash
 go get github.com/barnowlsnest/go-logslib/v2
 ```
+
+Requires Go 1.27 or later.
 
 ## Quick Start
 
@@ -49,6 +63,9 @@ func main() {
 	)
 }
 ```
+
+Full API documentation lives on
+[pkg.go.dev](https://pkg.go.dev/github.com/barnowlsnest/go-logslib/v2).
 
 ## Fields
 
@@ -125,9 +142,6 @@ func main() {
 }
 ```
 
-`sharedlog.F()` and `sharedlog.Panic()` are deprecated — use the typed field
-constructors from `logger` and `sharedlog.Error()` instead.
-
 ## Context Logging
 
 `ContextLogger` extracts `traceID` and `spanID` from a `context.Context` and adds
@@ -139,15 +153,13 @@ ctxLog := log.WithContext(ctx)
 ctxLog.Info("handling request")
 
 // Dynamic context, resolved at log time (HTTP handlers, middleware)
-ctxLog := log.WithContextFunc(func() context.Context { return r.Context() })
-ctxLog.Info("handling request")
+reqLog := log.WithContextFunc(func() context.Context { return r.Context() })
+reqLog.Info("handling request")
 ```
 
 Values must be stored under the package's unexported `contextKey` type, so use
 the exported names `logger.FieldTraceID` / `logger.FieldSpanID` as the key
 strings when your propagation layer sets them.
-
-`WithStaticContext()` is deprecated — use `WithContext()`.
 
 ## Configuration
 
@@ -165,8 +177,6 @@ logger.PanicLevel  //  4: Panic conditions (calls panic())
 
 `logger.LogLevelFromString("warn")` parses a level, returning
 `logger.ErrUnknownLogLevel` for anything unrecognized.
-
-`Logger.Panic()` is deprecated — prefer `Error()` or `Fatal()`.
 
 ### Output Formats
 
@@ -231,25 +241,54 @@ buffer is written out. Call `Flush()` before exit so nothing is lost.
 
 ## Performance
 
-Benchmarks on Apple M1 Max (`go test -bench=. -benchmem ./pkg/logger/`):
+Benchmarks on Apple M1 Max, Go 1.27 (`go test -bench=. -benchmem ./pkg/logger/`):
 
 | Operation          | Time (ns/op) | Allocations | Memory (B/op) |
 |--------------------|--------------|-------------|---------------|
-| Simple text        | 194          | 2           | 33            |
-| Simple JSON        | 222          | 2           | 33            |
-| Text with fields   | 223          | 2           | 33            |
-| JSON with fields   | 288          | 2           | 33            |
-| Many fields (8)    | 436          | 2           | 33            |
-| With context       | 400          | 3           | 161           |
-| Buffered           | 266          | 1           | 40            |
+| Simple text        | 182          | 2           | 33            |
+| Simple JSON        | 220          | 2           | 33            |
+| Text with fields   | 212          | 2           | 33            |
+| JSON with fields   | 276          | 2           | 33            |
+| Many fields (8)    | 454          | 2           | 33            |
+| With context       | 385          | 3           | 161           |
+| Buffered           | 257          | 1           | 40            |
 | Concurrent         | 39           | 2           | 33            |
 | Level filtering    | 2.8          | 0           | 0             |
 
-## Development
+Numbers vary with hardware; run the suite yourself before drawing conclusions.
+
+## Versioning and Compatibility
+
+The module follows [semantic versioning](https://semver.org) and is released as
+a `/v2` module path. Patch and minor releases keep the exported API
+backward-compatible; breaking changes wait for a new major version.
+
+The following are deprecated and kept only for compatibility — avoid them in new
+code:
+
+- `logger.Logger.Panic()` — use `Error()` or `Fatal()`
+- `logger.Logger.WithStaticContext()` — use `WithContext()`
+- `sharedlog.Panic()` — use `sharedlog.Error()`
+- `sharedlog.F()` — use the typed field constructors from `logger`
+
+## Contributing
+
+Contributions are welcome — issues, bug reports and pull requests all help.
+
+1. Fork the repository and create a branch off `main`.
+2. Make your change, with tests covering it.
+3. Run the full check suite and make sure it passes:
+
+   ```bash
+   task sanity
+   ```
+
+4. Open a pull request describing the change and, for anything touching the hot
+   path, include before/after benchmark output.
 
 ### Prerequisites
 
-- Go 1.26.2 or later
+- Go 1.27 or later
 - [Task](https://taskfile.dev) and `golangci-lint` for the full check suite
 
 ### Commands
@@ -275,7 +314,12 @@ This library maintains strict performance requirements:
 - **Memory usage**: Minimal footprint
 
 Benchmarks in `pkg/logger/benchmark_test.go` are part of the contract — changes
-must not regress allocation counts or ns/op.
+must not regress allocation counts or ns/op. Pull requests are checked by the
+build and lint workflows in `.github/workflows/`.
+
+## License
+
+Released under the [MIT License](LICENSE). © Barn Owls Nest.
 
 ## Acknowledgments
 
