@@ -178,6 +178,9 @@ logger.PanicLevel  //  4: Panic conditions (calls panic())
 `logger.LogLevelFromString("warn")` parses a level, returning
 `logger.ErrUnknownLogLevel` for anything unrecognized.
 
+`log.Level()` returns the configured minimum level, so callers can skip
+building fields for entries that would be dropped.
+
 ### Output Formats
 
 ```go
