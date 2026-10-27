@@ -36,7 +36,7 @@ CI runs two workflows on PRs and pushes to `main`: `.github/workflows/build.yml`
 Two packages under `pkg/`:
 
 ### `pkg/logger` — Core library
-- **`logger.go`** — `Logger`, `Config`, `Level`, `Format`, `Field` types; typed field constructors (`StringField`, `IntField`, `Int8/16/64Field`, `Uint/Uint8/16/32/64Field`, `Float32/64Field`, `BoolField`, `DurationField` — note there is no `Int32Field`); text formatting and value serialization (`appendValue`, `appendString`, `appendInt`, `appendUint`, `appendFloat`, `appendDuration`); `ContextLogger` for trace/span propagation. Uses `sync.Pool` for buffer reuse and `sync.Mutex` for buffered writes.
+- **`logger.go`** — `Logger`, `Config`, `Level`, `Format`, `Field` types; typed field constructors (`StringField`, `IntField`, `Int8/16/64Field`, `Uint/Uint8/16/32/64Field`, `Float32/64Field`, `BoolField`, `DurationField` — note there is no `Int32Field`); text formatting and value serialization (`appendValue`, `appendString`, `appendInt`, `appendUint`, `appendFloat`, `appendDuration`); `ContextLogger` for trace/span propagation; `Logger.Level()` exposes the configured minimum level. Uses `sync.Pool` for buffer reuse and `sync.Mutex` for buffered writes.
 - **`json.go`** — JSON formatting with hand-rolled serialization (no `encoding/json`). Type coverage mirrors the text path exactly; the two share `appendReflectValue` via format-specific string/nil hooks.
 - **`env.go`** — `ConfigFromEnv()` reads `LOG_LEVEL` (default `debug`), `LOG_FORMAT` (default `text`), `LOG_BUFFER_SIZE` (default `0`), `LOG_USE_UTC` (default `false`). Unknown values fall back to the default instead of erroring. `Output` is left nil so `New()` defaults it to stdout.
 
@@ -54,7 +54,7 @@ Two packages under `pkg/`:
 
 ## Public API Stability
 
-This is a published, tagged module (latest tag `v2.2.0`) consumed by outside users. Treat exported identifiers as API: additive changes are fine, renames and removals need a major version. Update `README.md` whenever exported API, env vars, or benchmark numbers change.
+This is a published, tagged module (latest tag `v2.4.0`) consumed by outside users. Treat exported identifiers as API: additive changes are fine, renames and removals need a major version. Update `README.md` whenever exported API, env vars, or benchmark numbers change.
 
 ## Testing
 

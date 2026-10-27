@@ -259,6 +259,13 @@ func DurationField(name string, value time.Duration) Field {
 	return Field{Key: name, Value: value}
 }
 
+// Level returns the minimum level this logger emits. Entries below it are
+// dropped before any formatting work, so callers that build expensive
+// fields can check Level first and skip them.
+func (l *Logger) Level() Level {
+	return l.config.Level
+}
+
 // WithContextFunc creates a ContextLogger that automatically extracts context
 // information from the provided context function for each log entry.
 //
